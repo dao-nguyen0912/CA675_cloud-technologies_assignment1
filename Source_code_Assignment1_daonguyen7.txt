@@ -1,0 +1,155 @@
+
+---------CA675.Cloud Technology.Assignment 1
+---------Dao Thi Nguyen
+---------StudentId: 20212316
+---------MSc in Computing with Data Analytics Major
+---------This assignment consists of 4 tasks
+
+----------I. Getting data from Stack Exchange 
+----------II. Loading the data with PIG 
+----------III. Querying data with Hive - The solution is presented in
+----------IV. Calculating TF-IDF with MapReduce/Pig/Hive 
+The source codes and description details of this assignment can also
+be found on GitHub at the folowing url: 
+https://github.com/dao-nguyen0912/CA675_cloud-technologies_assignment1/tree/main
+
+
+
+--TASK 1. Data aquisition
+--The address to get data: https://data.stackexchange.com/stackoverflow/query/new      The accessed datetime: 21:30 1Nov20
+select count(*) from Posts; --50.935.124 --
+SELECT count(*) FROM Posts where ViewCount> 36500; --the result is 200.555
+
+The next steps is using the viewcount to query data.
+SELECT TOP 50000 * FROM Posts where ViewCount> 36500 order by ViewCount desc; - -min viewcount is 111930
+SELECT TOP 50000 * FROM Posts where ViewCount> 36500 and ViewCount < 111930 order by ViewCount desc; --min ViewCount is 65887
+SELECT TOP 50000 * FROM Posts where ViewCount> 36500 and ViewCount <= 65887 order by ViewCount desc; --min ViewCount is 47040
+SELECT TOP 50000 * FROM Posts where ViewCount> 36500 and ViewCount <= 47040 order by ViewCount desc; --min ViewCount is 36591
+SELECT TOP 50* FROM Posts where ViewCount> 36500 and ViewCount <= 36591 order by ViewCount desc;
+
+
+
+--TASK 2. Load data with PIG
+grunt> register piggybank.jar
+
+loadData1 = Load 'hdfs://cluster-a7d8-m/pig/QueryResults1.csv' USING org.apache.pig.piggybank.storage.CSVExcelStorage(',','YES_MULTILINE','WINDOWS','SKIP_INPUT_HEADER') AS (Id:int,PostTypeId:int,AcceptedAnswerId:int,ParentId:int,CreationDate:datetime,DeletionDate:datetime,Score:int,ViewCount:int,Body:chararray,OwnerUserId:int,OwnerDisplayName:chararray,LastEditorUserId:int,LastEditorDisplayName:chararray,LastEditDate:datetime,LastActivityDate:datetime,Title:chararray,Tags:chararray,AnswerCount:int,CommentCount:int,FavoriteCount:int,ClosedDate:datetime,CommunityOwnedDate:datetime,ContentLicense:chararray);
+
+loadData2 = Load 'hdfs://cluster-a7d8-m/pig/QueryResults2.csv' USING org.apache.pig.piggybank.storage.CSVExcelStorage(',','YES_MULTILINE','WINDOWS','SKIP_INPUT_HEADER') AS (Id:int,PostTypeId:int,AcceptedAnswerId:int,ParentId:int,CreationDate:datetime,DeletionDate:datetime,Score:int,ViewCount:int,Body:chararray,OwnerUserId:int,OwnerDisplayName:chararray,LastEditorUserId:int,LastEditorDisplayName:chararray,LastEditDate:datetime,LastActivityDate:datetime,Title:chararray,Tags:chararray,AnswerCount:int,CommentCount:int,FavoriteCount:int,ClosedDate:datetime,CommunityOwnedDate:datetime,ContentLicense:chararray);
+
+loadData3 = Load 'hdfs://cluster-a7d8-m/pig/QueryResults3.csv' USING org.apache.pig.piggybank.storage.CSVExcelStorage(',','YES_MULTILINE','WINDOWS','SKIP_INPUT_HEADER') AS (Id:int,PostTypeId:int,AcceptedAnswerId:int,ParentId:int,CreationDate:datetime,DeletionDate:datetime,Score:int,ViewCount:int,Body:chararray,OwnerUserId:int,OwnerDisplayName:chararray,LastEditorUserId:int,LastEditorDisplayName:chararray,LastEditDate:datetime,LastActivityDate:datetime,Title:chararray,Tags:chararray,AnswerCount:int,CommentCount:int,FavoriteCount:int,ClosedDate:datetime,CommunityOwnedDate:datetime,ContentLicense:chararray);
+
+loadData4 = Load 'hdfs://cluster-a7d8-m/pig/QueryResults4.csv' USING org.apache.pig.piggybank.storage.CSVExcelStorage(',','YES_MULTILINE','WINDOWS','SKIP_INPUT_HEADER') AS (Id:int,PostTypeId:int,AcceptedAnswerId:int,ParentId:int,CreationDate:datetime,DeletionDate:datetime,Score:int,ViewCount:int,Body:chararray,OwnerUserId:int,OwnerDisplayName:chararray,LastEditorUserId:int,LastEditorDisplayName:chararray,LastEditDate:datetime,LastActivityDate:datetime,Title:chararray,Tags:chararray,AnswerCount:int,CommentCount:int,FavoriteCount:int,ClosedDate:datetime,CommunityOwnedDate:datetime,ContentLicense:chararray);
+
+loadData5 = Load 'hdfs://cluster-a7d8-m/pig/QueryResults5.csv' USING org.apache.pig.piggybank.storage.CSVExcelStorage(',','YES_MULTILINE','WINDOWS','SKIP_INPUT_HEADER') AS (Id:int,PostTypeId:int,AcceptedAnswerId:int,ParentId:int,CreationDate:datetime,DeletionDate:datetime,Score:int,ViewCount:int,Body:chararray,OwnerUserId:int,OwnerDisplayName:chararray,LastEditorUserId:int,LastEditorDisplayName:chararray,LastEditDate:datetime,LastActivityDate:datetime,Title:chararray,Tags:chararray,AnswerCount:int,CommentCount:int,FavoriteCount:int,ClosedDate:datetime,CommunityOwnedDate:datetime,ContentLicense:chararray);
+
+
+grunt> generateData1 =FOREACH loadData1 GENERATE Id, Score, ViewCount, OwnerUserId, OwnerDisplayName, Title, Tags, REPLACE(REPLACE(REPLACE(Body,'[\n|\r]',' '),',',' '),'<[^>]*>',' ');
+
+grunt> generateData2 =FOREACH loadData2 GENERATE Id, Score, ViewCount, OwnerUserId, OwnerDisplayName, Title, Tags, REPLACE(REPLACE(REPLACE(Body,'[\n|\r]',' '),',',' '),'<[^>]*>',' ');
+grunt> generateData3 =FOREACH loadData3 GENERATE Id, Score, ViewCount, OwnerUserId, OwnerDisplayName, Title, Tags, REPLACE(REPLACE(REPLACE(Body,'[\n|\r]',' '),',',' '),'<[^>]*>',' ');
+
+grunt> generateData4 =FOREACH loadData4 GENERATE Id, Score, ViewCount, OwnerUserId, OwnerDisplayName, Title, Tags, REPLACE(REPLACE(REPLACE(Body,'[\n|\r]',' '),',',' '),'<[^>]*>',' ');
+
+grunt> generateData5 =FOREACH loadData5 GENERATE Id, Score, ViewCount, OwnerUserId, OwnerDisplayName, Title, Tags, REPLACE(REPLACE(REPLACE(Body,'[\n|\r]',' '),',',' '),'<[^>]*>',' ');
+
+STORE generateData1 INTO '/FinalHive1' USING org.apache.pig.piggybank.storage.CSVExcelStorage(',','YES_MULTILINE','WINDOWS','SKIP_INPUT_HEADER');
+STORE generateData2 INTO '/FinalHive2' USING org.apache.pig.piggybank.storage.CSVExcelStorage(',','YES_MULTILINE','WINDOWS','SKIP_INPUT_HEADER');
+STORE generateData3 INTO '/FinalHive3' USING org.apache.pig.piggybank.storage.CSVExcelStorage(',','YES_MULTILINE','WINDOWS','SKIP_INPUT_HEADER');
+STORE generateData4 INTO '/FinalHive4' USING org.apache.pig.piggybank.storage.CSVExcelStorage(',','YES_MULTILINE','WINDOWS','SKIP_INPUT_HEADER');
+STORE generateData5 INTO '/FinalHive5' USING org.apache.pig.piggybank.storage.CSVExcelStorage(',','YES_MULTILINE','WINDOWS','SKIP_INPUT_HEADER');
+
+
+hadoop fs -rm /FinalHive1/_SUCCESS
+hadoop fs -rm /FinalHive2/_SUCCESS
+hadoop fs -rm /FinalHive3/_SUCCESS
+hadoop fs -rm /FinalHive4/_SUCCESS
+hadoop fs -rm /FinalHive5/_SUCCESS
+hadoop fs -mv /FinalHive1/part-m-00000 /HiveData1.csv
+hadoop fs -mv /FinalHive2/part-m-00000 /HiveData2.csv
+hadoop fs -mv /FinalHive3/part-m-00000 /HiveData3.csv
+hadoop fs -mv /FinalHive4/part-m-00000 /HiveData4.csv
+hadoop fs -mv /FinalHive5/part-m-00000 /HiveData5.csv
+hadoop fs -copyToLocal 'hdfs://cluster-a7d8-m/HiveData1.csv' /home/dao_nguyen7
+hadoop fs -copyToLocal 'hdfs://cluster-a7d8-m/HiveData2.csv' /home/dao_nguyen7
+hadoop fs -copyToLocal 'hdfs://cluster-a7d8-m/HiveData3.csv' /home/dao_nguyen7
+hadoop fs -copyToLocal 'hdfs://cluster-a7d8-m/HiveData4.csv' /home/dao_nguyen7
+hadoop fs -copyToLocal 'hdfs://cluster-a7d8-m/HiveData5.csv' /home/dao_nguyen7
+-----------------------------
+
+
+
+--TASK 3: Query with Hive
+
+CREATE external TABLE IF not exists hiveTable (Id int, Score int, ViewCount int, OwnerUserId int, OwnerDisplayName string, Title string, Tags string, Body string) ROW FORMAT DELIMITED  FIELDS TERMINATED BY ','; 
+CREATE external TABLE IF not exists hiveTable1 (Id int, Score int, ViewCount int, OwnerUserId int, OwnerDisplayName string, Title string, Tags string, Body string) ROW FORMAT DELIMITED  FIELDS TERMINATED BY ','; 
+CREATE external TABLE IF not exists hiveTable2 (Id int, Score int, ViewCount int, OwnerUserId int, OwnerDisplayName string, Title string, Tags string, Body string) ROW FORMAT DELIMITED  FIELDS TERMINATED BY ','; 
+
+CREATE external TABLE IF not exists hiveTable3 (Id int, Score int, ViewCount int, OwnerUserId int, OwnerDisplayName string, Title string, Tags string, 
+Body string) ROW FORMAT DELIMITED  FIELDS TERMINATED BY ','; 
+CREATE external TABLE IF not exists hiveTable4 (Id int, Score int, ViewCount int, OwnerUserId int, OwnerDisplayName string, Title string, Tags string, Body string) ROW FORMAT DELIMITED  FIELDS TERMINATED BY ','; 
+CREATE external TABLE IF not exists hiveTable5 (Id int, Score int, ViewCount int, OwnerUserId int, OwnerDisplayName string, Title string, Tags string, Body string) ROW FORMAT DELIMITED  FIELDS TERMINATED BY ','; 
+
+Load data local inpath 'HiveData1.csv' overwrite into table hiveTable1;
+Load data local inpath 'HiveData2.csv' overwrite into table hiveTable2;
+Load data local inpath 'HiveData3.csv' overwrite into table hiveTable3;
+Load data local inpath 'HiveData4.csv' overwrite into table hiveTable4;
+Load data local inpath 'HiveData5.csv' overwrite into table hiveTable5;
+
+INSERT OVERWRITE TABLE hiveTable   SELECT * FROM hiveTable1   UNION ALL  SELECT * from hiveTable2 UNION ALL SELECT * from hiveTable3 UNION ALL SELECT * from hiveTable4 UNION ALL SELECT * from hiveTable5;
+Create  TABLE hiveTable_ok as SELECT distinct * FROM hiveTable order by viewcount desc limit 200000;
+
+
+
+--I.	The top 10 posts by score 
+select id, title from hiveTable limit 10;
+
+--II.	The top 10 users by post score 
+hive> select ownerUserid, sum(Score) as score_sum from hiveTable_ok group by ownerUserId order by score_sum desc limit 10;
+
+create table user_top10 as select ownerUserid, sum(Score) as score_sum from hiveTable_ok group by ownerUserId order by score_sum desc limit 10;
+hive> select ownerUserId, ownerDisplayName from hiveTable_ok where ownerUserId in ( select ownerUserId from user_top10) group by ownerUserId, ownerDisplayName;
+
+--III.	The number of distinct users, who used the word “Hadoop” in one of their posts
+hive> select COUNT(distinct(OwnerUserId)) from hiveTable_ok where Body like '%Hadoop%' or Title like '%Hadoop%' or Tags like '%Hadoop%';
+
+
+-------------
+--TASK 4. Calculate TF-IDF with MapReduce/Pig/Hive 
+
+Using Mapreduce/Pig/Hive calculate the per-user TF-IDF (just submit the top
+10 terms for each of the top 10 users from Query 3.II)
+TFIDF, short for term frequency–inverse document frequency
+TF-IDF is the product of two statistics : Term Frequency (TF) and Inverse Document Frequency (IDF).
+TF is the number of times a term (word) occurs in a document.
+IDF is a numerical statistic that is intended to reflect how important a word is to a document.
+
+Using Mapreduce/Pig/Hive calculate the per-user TF-IDF (just submit the top 10 terms for each of the top 10 users from Query 3.II)
+Hivemall: Apache Hivemall is a scalable machine learning library that runs on Apache Hive/Pig/Spark. It provides machine learning functionality as well as feature engineering functions through UDFs/UDAFs/UDTFs of Hive. When it comes to feature engineering in the context of information retrieval, Hivemall offers TF-IDF tool. 
+
+
+hive> add jar  hivemall-0.4.2.2-dependencies.jar;
+hive> source define-all-2.hive;
+
+create table question4Data as select ownerUserId,Title, Body, Tags from hiveTable where ownerUserId in (select ownerUserId from user_top10);
+
+create temporary macro max2(x INT, y INT) if(x>y,x,y);
+create temporary macro tfidf(tf FLOAT, df_t INT, n_docs INT) tf * (log(10, CAST(n_docs as FLOAT)/max2(1,df_t)) + 1.0);
+create or replace view question4_exploded as select ownerUserId, word from question4Data LATERAL VIEW explode(tokenize(Body,true)) t as word where not is_stopword(word);
+
+create or replace view term_frequency_temp as select ownerUserId, word, freq from (select ownerUserId, tf(word) as word2freq from question4_exploded group by ownerUserId) t LATERAL VIEW explode(word2freq) t2 as word, freq;
+create or replace view term_frequency as select * from (select ownerUserId, word, freq, rank() over ( partition by ownerUserId order by freq desc) as rank from term_frequency_temp ) t where rank <= 10;
+create or replace view document_frequency as select   word, count(distinct ownerUserId) docs from question4_exploded group by word;
+
+-- set the total number of documents
+set hivevar:n_docs=3;
+
+create or replace view tfidf as select  tf.ownerUserId, tf.word, tfidf(tf.freq, df.docs, ${n_docs}) as tfidf from  term_frequency tf JOIN document_frequency df ON (tf.word = df.word) order by  tfidf desc;
+select ownerUserId, collect_list(feature(word, tfidf)) as features from   tfidf group by ownerUserId;
+
+
+
+
+
+
+
+
